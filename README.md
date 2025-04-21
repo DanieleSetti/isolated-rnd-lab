@@ -152,3 +152,131 @@ sudo chmod 2770 /home/dev
   - New files created inside inherit the group (`setgid` bit).
 
 This setup provides a secure and organized environment for internal team collaboration.
+
+
+## 🗂 NFS Configuration for Shared Directory Access between Server and Client
+
+This section describes the setup and configuration of NFS (Network File System) to enable shared access between the server and client machines.
+
+### Why NFS?
+
+NFS (Network File System) is a protocol that allows you to mount directories from a remote machine as if they were local. I chose NFS because it's an open-source solution that doesn't require licenses and is well-suited for file sharing between Linux servers. It is widely used in small to medium teams, such as our development team.
+
+### Connection Issues
+
+During the initial attempt to connect to the server via NFS, I encountered a problem where the server and client were on different networks (using different network adapters). The server used a Host-Only Adapter, while the client used NAT. This caused the machines to be unable to communicate with each other.
+
+### Solution to the Connection Problem
+
+To resolve the issue, I changed the client's network adapter to Host-Only, similar to the server's configuration. This created a private network where both machines could interact with each other. Once this was done, I was able to successfully connect from the client to the server and mount the necessary directory.
+
+### NFS Server Configuration
+
+1. **Install NFS Server:**
+   On the server, I installed the necessary NFS packages:
+
+2. **Create Export Directory:**
+   I created the directory to be shared (`/home/dev`) and set the appropriate permissions:
+
+   ```bash
+   sudo mkdir /home/dev
+   sudo chown root:devteam /home/dev
+   sudo chmod 2770 /home/dev
+   ```
+
+3. **Export the Directory:**
+   I edited the `/etc/exports` file to allow the client access:
+
+   ```bash
+   /home/dev 192.168.56.0/24(rw,sync,no_subtree_check)
+   ```
+
+4. **Restart NFS Service:**
+   Finally, I restarted the NFS service to apply the changes:
+
+   ```bash
+   sudo exportfs -ra
+   sudo systemctl restart nfs-kernel-server
+   ```
+
+### NFS Client Configuration
+
+1. **Install NFS Client:**
+   On the client machine, I installed the necessary packages to work with NFS:
+
+2. **Mount the Remote Directory:**
+   I mounted the remote directory from the server:
+
+   ```bash
+   sudo mount 192.168.56.10:/home/dev /mnt
+   ```
+
+3. **Automate Mounting with /etc/fstab:**
+   To ensure the directory is automatically mounted on system boot, I added the following line to the `/etc/fstab` file:
+
+   ```bash
+   192.168.56.10:/home/dev /mnt nfs defaults 0 0
+   ```
+
+### User and Group Creation on Client
+
+To restrict access to the shared directory to only the `devteam` group (including users `john`, `bob`, and `kim`), I created the users and group on the client machine:
+
+1. **Create Users:**
+
+   ```bash
+   sudo useradd -m john
+   sudo passwd john
+   sudo useradd -m bob
+   sudo passwd bob
+   sudo useradd -m kim
+   sudo passwd kim
+   ```
+
+2. **Create Group:**
+
+   ```bash
+   sudo groupadd devteam
+   sudo usermod -aG devteam john
+   sudo usermod -aG devteam bob
+   sudo usermod -aG devteam kim
+   ```
+
+### Verifying the Configuration
+
+After setting up NFS and creating the necessary users and groups, I verified access to the mounted directory on the client. I created a test file through the `john` user in the mounted directory and confirmed that the file was updated on the server:
+
+```bash
+sudo -u john touch /mnt/testfile.txt
+ls -l /mnt
+```
+
+Now, only users from the `devteam` group can work with files in the `/home/dev` directory, and access for other users is restricted.
+
+### Conclusion
+
+By configuring NFS, I enabled secure file sharing between the server and client machines. I used a Host-Only Adapter to create a private network, ensuring that only the `devteam` group has access to the shared directory. The setup is now working correctly, and I can securely manage files within the shared directory on the server.
+
+### 🛠 How to Fix the "Illegal Port" Error During NFS Mounting
+
+**Problem:**  
+The NFS server refused mount requests from the client, showing the error `refused mount request ... illegal port`. This happens because by default, the `rpc.mountd` service on the server allows connections only from privileged ports (below 1024), while the client uses a random port above 1024.
+
+**Solution:**  
+To allow connections from non-privileged ports, I added the `insecure` option in the `/etc/exports` file on the server:
+
+```bash
+/home/dev 192.168.56.0/24(rw,sync,no_subtree_check,insecure)
+```
+
+After modifying the file, I applied the changes by running:
+
+```bash
+sudo exportfs -ra
+```
+
+Finally, I confirmed that the export was applied:
+
+```bash
+sudo exportfs -v
+```
