@@ -89,3 +89,9 @@ network:
           - 8.8.8.8
           - 1.1.1.1
 
+🔌 Result
+The server received internet access through enp0s3 (NAT).
+
+The static IP 192.168.56.10 was assigned to enp0s8.
+
+From the host machine, SSH access became available:
