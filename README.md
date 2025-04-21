@@ -98,3 +98,58 @@ The static IP `192.168.56.10` was assigned to `enp0s8`.
 From the host machine, SSH access became available
 
 This completed the initial setup of the primary server, which is now ready for further roles such as user management and file sharing.
+
+## 👥 User and Group Management
+
+This section covers the creation of developer users, hardening of the admin account, and configuration of a shared working directory for collaborative access.
+
+### 🧑‍💻 User Creation
+
+Three standard users (`john`, `bob`, and `kim`) were created to simulate a development team environment:
+
+- Created using `adduser`, each with a default home directory.
+- A common password (`pass123`) was temporarily assigned for simplicity.
+- By default, home directories were created with `755` permissions, which allows read and execute access to others.
+
+### 🔐 Admin User Hardening
+
+To restrict access to the administrative user's data:
+
+```bash
+chmod 700 /home/admin
+```
+
+This ensures that only the `admin` user has access to their home directory, improving overall security.
+
+### 🧑‍🤝‍🧑 Group Setup: `devteam`
+
+A new group `devteam` was created to represent the developer team:
+
+```bash
+sudo groupadd devteam
+```
+
+All three developer users were added to this group using:
+
+```bash
+sudo usermod -aG devteam <username>
+```
+
+This allows for flexible permissions management across the team.
+
+### 📂 Shared Working Directory
+
+To support collaboration, a shared directory `/home/dev` was created and configured:
+
+```bash
+sudo mkdir /home/dev
+sudo chown root:devteam /home/dev
+sudo chmod 2770 /home/dev
+```
+
+- Ownership was set to `root:devteam`.
+- The `2770` permission ensures:
+  - Only users in the `devteam` group can access the directory.
+  - New files created inside inherit the group (`setgid` bit).
+
+This setup provides a secure and organized environment for internal team collaboration.
