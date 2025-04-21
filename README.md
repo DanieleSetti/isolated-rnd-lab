@@ -15,13 +15,6 @@ The infrastructure includes:
 
 ## 📚 Table of Contents
 
-- [Architecture Overview](docs/infrastructure.md)
-- [Security: SSH Hardening, UFW, Fail2Ban](docs/security.md)
-- [VPN Access](docs/vpn.md)
-- [NFS Configuration](docs/nfs.md)
-- [User and Group Management](docs/users.md)
-- [Automation Scripts](docs/automation.md)
-- [Monitoring and Logging](docs/monitoring.md)
 
 ## ⚙️ Scripts
 
