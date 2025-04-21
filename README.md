@@ -108,8 +108,7 @@ This section covers the creation of developer users, hardening of the admin acco
 Three standard users (`john`, `bob`, and `kim`) were created to simulate a development team environment:
 
 - Created using `adduser`, each with a default home directory.
-- A common password (`pass123`) was temporarily assigned for simplicity.
-- By default, home directories were created with `755` permissions, which allows read and execute access to others.
+- A common password was temporarily assigned for simplicity.
 
 ### 🔐 Admin User Hardening
 
