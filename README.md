@@ -91,10 +91,6 @@ network:
       dhcp4: false
       addresses:
       - 192.168.56.10/24
-      nameservers:
-        addresses:
-          - 8.8.8.8
-          - 1.1.1.1
 ```
 
 #### 🔌 Result
