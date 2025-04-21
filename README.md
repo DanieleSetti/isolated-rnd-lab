@@ -290,7 +290,7 @@ sudo exportfs -v
 
 
 
-## 📁 VPN and Bastion Server Setup
+## 🧱 VPN and Bastion Server Setup
 
 ### VPN + Bastion Host
 
