@@ -88,6 +88,7 @@ network:
         addresses:
           - 8.8.8.8
           - 1.1.1.1
+```
 
 🔌 Result
 The server received internet access through enp0s3 (NAT).
