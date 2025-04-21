@@ -280,3 +280,312 @@ Finally, I confirmed that the export was applied:
 ```bash
 sudo exportfs -v
 ```
+
+
+
+## 📁 VPN and Bastion Server Setup
+
+### VPN + Bastion Host
+
+┌─────────────┐
+│   Your PC   │
+└────┬────────┘
+     │
+     ▼
+┌──────────────┐            ┌──────────────────────┐
+│ Bastion Host │    <──>    │  Server2             │
+│ (VPN + SSH)  │            │ (SSH only over VPN)  │
+└──────────────┘            └──────────────────────┘
+
+### 🔧 Objective
+
+The goal was to set up a secure internal infrastructure consisting of two virtual machines:
+
+- **infra-server**: Acts as the bastion host (entry point) and dev server.
+- **server2**: A protected internal machine, accessible only via VPN.
+
+### ✅ What Was Done
+
+1. **Created the second virtual machine (server2)** based on Ubuntu live server, with a minimal set of packages.
+   - Static IP assigned via host-only interface: `192.168.56.20`.
+
+2. **Installed and configured WireGuard:**
+   - On **infra-server**, I set up the WireGuard server with IP `10.10.0.1/24`.
+   - On **server2**, I set up the WireGuard client with IP `10.10.0.2/24`.
+   - Enabled routing between VPN interfaces.
+
+3. **Modified SSH configuration on server2:**
+   - SSH is now configured to listen only on the WireGuard interface (`10.10.0.2`).
+   - The SSH port is closed for NAT and host-only interfaces.
+
+4. **Testing:**
+   - From infra-server (via VPN), I was able to connect to server2 over SSH.
+   - Access from the host or other machines without VPN is not possible — the connection hangs (no route or timeout).
+
+### 🔐 Why This Approach?
+
+**Security:**
+- **Server2** is not directly accessible — even if an attacker knows its IP and SSH is enabled, they cannot access it without a VPN connection.
+- This reduces the attack surface and simulates a real production environment.
+
+**Centralized Access:**
+- All connections to the infrastructure pass through a single controlled server (infra-server).
+- This allows logging, applying access policies, and simplifying security management.
+
+### 💡 Conclusion
+
+We have implemented a classic scheme: **bastion → VPN → internal network**. In production, such bastion servers are located in the DMZ or edge segments. All internal services are isolated from the external world. 
+
+As a result, even if a host or client is compromised, without access to the bastion and VPN, the infrastructure remains isolated.
+
+### ❗ Problem: WireGuard Tunnel Doesn't Work Until the Second Side Sends the First Packet
+
+**Symptoms:**
+- SSH connection to **Server2** from **infra-server** does not work.
+- After pinging from **Server2** to **infra-server**, the connection starts working.
+- Logs show "No route to host" error.
+
+**Reason:**
+- WireGuard operates over UDP and does not establish a persistent connection (unlike TCP). Until one side sends the first packet, the other side doesn't know where to send the response.
+- This is especially critical if:
+  - Peers are behind NAT (e.g., VBox NAT or internal networks).
+  - One node does not listen on the port (no `ListenPort`).
+  - No active traffic between peers.
+
+WireGuard stores the endpoint (peer address) only after a successful handshake. Without it, packets are lost.
+
+### ✅ Solution
+
+1. **Ensure both peers have a `ListenPort` set:**
+   On **Server2** (if it's supposed to accept connections):
+
+   ```bash
+   [Interface]
+   Address = 10.10.0.2/24
+   PrivateKey = <PRIVATE_KEY>
+   ListenPort = 51821  
+   
+   [Peer]
+   PublicKey = <PUB_INFRA_SERVER>
+   Endpoint = 192.168.56.10:51820
+   AllowedIPs = 10.10.0.1/32
+   PersistentKeepalive = 15
+
+   `ListenPort` is required for the kernel to create a UDP socket and listen for incoming connections.
+
+2. **Add `PersistentKeepalive` on the side that should maintain the connection:**
+   On **infra-server**:
+
+   ```bash
+   [Peer]
+   PublicKey = <PUB_SERVER2>
+   AllowedIPs = 10.10.0.2/32
+   PersistentKeepalive = 15
+   ```
+
+   This ensures that **infra-server** sends a packet every 15 seconds, keeping the connection alive, even if **Server2** is silent.
+
+### 📌 Diagnostics
+
+To check the status of the WireGuard tunnel:
+
+```bash
+sudo wg show
+```
+
+Look for the `latest handshake` field. If it's missing, the peers haven't connected, and the tunnel is "dead."
+
+### 💡 Conclusion
+
+WireGuard is reliable, but it requires an understanding of its mechanics:
+- No TCP connection → no handshake → no route.
+- **PersistentKeepalive** solves this problem.
+- Internal networks and NAT make this issue especially noticeable.
+
+Now the tunnel works reliably and does not require manual pinging.
+
+
+## 📁 UFW Configuration and Troubleshooting Documentation
+
+### Introduction
+
+**UFW (Uncomplicated Firewall)** is a tool used to configure and manage the firewall on Linux. In this project, UFW is used to manage access to the server and ensure security by restricting access to services on specific ports.
+
+### 1. Installing and Enabling UFW
+
+#### Installing UFW
+
+On **server2**, install UFW with the following command:
+
+```bash
+sudo apt install ufw
+```
+
+#### Enabling UFW
+
+After installation, enable UFW with the command:
+
+```bash
+sudo ufw enable
+```
+
+**Important:** When enabling the firewall, a warning will be displayed that SSH connectivity might be disrupted. Ensure that the firewall settings allow access on the required ports.
+
+### 2. Configuring Rules for SSH Access Over VPN
+
+To ensure SSH access to the server is only possible when connected via VPN, configure the following rules:
+
+#### Allow SSH Connections on the `wg0` Interface
+
+#### UFW Configuration Parameters
+
+To check the current firewall rules, use the command:
+
+```bash
+sudo ufw status verbose
+```
+
+Example output:
+
+```
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+51820/udp                  ALLOW IN    Anywhere
+Anywhere on wg0            ALLOW IN    Anywhere
+22/tcp on wg0              ALLOW IN    Anywhere
+51820/udp (v6)             ALLOW IN    Anywhere (v6)
+Anywhere (v6) on wg0       ALLOW IN    Anywhere (v6)
+22/tcp (v6) on wg0         ALLOW IN    Anywhere (v6)
+```
+
+### 3. Troubleshooting SSH Connectivity After Enabling UFW
+
+After enabling UFW and adding rules, SSH connectivity might not work if the firewall rules are not correctly set. If you are unable to connect to the server via SSH, the following reasons might apply:
+
+#### Problem: SSH Connection Error
+
+**Causes:**
+- UFW rules do not allow access on port 22 via the `wg0` interface.
+- A firewall is blocking the connection.
+- The VPN connection is not established or is unstable.
+
+#### Solution:
+
+Add the necessary rules to allow SSH over the VPN:
+
+```bash
+sudo ufw allow in on wg0 to any port 22 proto tcp
+sudo ufw enable
+```
+
+#### Final UFW Configuration
+
+**Logging:** on (low)
+
+**Default:** deny (incoming), allow (outgoing), disabled (routed)
+
+**New profiles:** skip
+
+**To**                         | **Action**  | **From**
+-------------------------------|-------------|---------------------
+22/tcp on enp0s8                | ALLOW IN    | Anywhere
+2049/tcp                        | ALLOW IN    | 192.168.56.0/24
+2049/udp                        | ALLOW IN    | 192.168.56.0/24
+111/tcp                         | ALLOW IN    | 192.168.56.0/24
+111/udp                         | ALLOW IN    | 192.168.56.0/24
+22/tcp                          | ALLOW IN    | 192.168.56.0/24
+22/tcp                          | ALLOW IN    | 192.168.56.1
+51820/udp on enp0s8             | ALLOW IN    | 192.168.56.20
+22/tcp (v6) on enp0s8           | ALLOW IN    | Anywhere (v6)
+
+**Anywhere**                    | **ALLOW OUT** | **Anywhere on wg0**
+192.168.56.10 51820/udp         | **ALLOW OUT** | **Anywhere on enp0s8**
+192.168.56.20 51820/udp         | **ALLOW OUT** | **Anywhere on enp0s8**
+**Anywhere (v6)**               | **ALLOW OUT** | **Anywhere (v6) on wg0**
+
+
+## 🔐 Basic SSH Hardening
+
+### Objective
+
+Minimize the risk of unauthorized access to the server via SSH within the local network, even when password authentication is enabled.
+
+---
+
+### 1. Disable Root Login via SSH
+
+**Why:**  
+The `root` account is a common target for attacks. Even with a strong password, direct login as root should be disabled to reduce the attack surface.
+
+**How:**  
+Edit the SSH daemon configuration file `/etc/ssh/sshd_config` and add or modify the following line:
+
+```bash
+PermitRootLogin no
+```
+
+---
+
+### 2. Allow SSH Access for Specific Users Only
+
+**Why:**  
+Restricting SSH access to a specific user (e.g., `admin`) prevents login attempts with other usernames, even if their credentials are compromised.
+
+**How:**  
+In the same `/etc/ssh/sshd_config` file, specify the allowed user(s):
+
+```bash
+AllowUsers admin
+```
+
+💡 Any login attempts from other usernames will be rejected before password verification is even attempted.
+
+---
+
+### 3. Set Up Fail2Ban
+
+**Why:**  
+Fail2Ban provides protection against brute-force attacks by automatically banning IP addresses that repeatedly fail to authenticate.
+
+**How:**  
+Install and configure Fail2Ban:
+
+```bash
+sudo apt install fail2ban -y
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+```
+
+Edit the file `/etc/fail2ban/jail.local` and configure the `sshd` section (or add it manually):
+
+```ini
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 60  # temporary ban time in seconds (adjust as needed)
+```
+
+Start and check the status:
+
+```bash
+sudo systemctl restart fail2ban
+sudo fail2ban-client status sshd
+```
+
+---
+
+⚠️ **Note:**  
+At this stage, SSH key-based authentication is **not yet configured** — login is still password-based.
+
+In the future, it is recommended to fully disable password authentication (`PasswordAuthentication no`) and switch to SSH key authentication for enhanced security.
+
+Currently, this is not critical, as:
+- The server is located within a **private LAN**.
+- Additional protections are in place via **UFW** and **Fail2Ban**.
