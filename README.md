@@ -595,3 +595,15 @@ In the future, it is recommended to fully disable password authentication (`Pass
 Currently, this is not critical, as:
 - The server is located within a **private LAN**.
 - Additional protections are in place via **UFW** and **Fail2Ban**.
+
+
+## 📜 Useful Scripts
+
+These scripts automate typical sysadmin tasks in the isolated R&D environment.
+
+- [`update_system.sh`](./scripts/update_system.sh) – System update script with logging and cron scheduling.
+- [`setup_nfs.sh`](./scripts/setup_nfs.sh) – Configure and export NFS shares to internal clients.
+- [`add_user.sh`](./scripts/add_user.sh) – Add new users with proper permissions and home directories.
+- [`vpn_setup.sh`](./scripts/vpn_setup.sh) – Generate VPN credentials and .ovpn config for new clients.
+
+See each script for in-line documentation. All scripts are meant to be run as `root`.
