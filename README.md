@@ -15,9 +15,10 @@ The infrastructure includes:
 
 ## 📚 Table of Contents
 - [🧰 Initial VM Setup and Networking](#-initial-vm-setup-and-networking)
-- [🔌 WireGuard VPN Configuration](#-wireguard-vpn-configuration)
-- [🧱 NFS Server Setup](#-nfs-server-setup)
-- [🛡️ UFW Firewall Configuration](#-ufw-firewall-configuration)
+- [👥 User and Group Management](#-user-and-group-management)
+- [🔌 NFS Configuration](#-nfs-configuration-for-shared-directory-access-between-server-and-client)
+- [🧱 VPN and Bastion Server Setup](#-vpn-and-bastion-server-setup)
+- [📁 UFW Configuration and Troubleshooting](#-ufw-configuration-and-troubleshooting-documentation)
 - [🔐 Basic SSH Hardening](#-basic-ssh-hardening)
 - [📜 Useful Scripts](#-useful-scripts)
 
