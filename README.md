@@ -504,7 +504,6 @@ sudo ufw enable
 
 **To**                         | **Action**  | **From**
 -------------------------------|-------------|---------------------
-22/tcp on enp0s8                | ALLOW IN    | Anywhere
 2049/tcp                        | ALLOW IN    | 192.168.56.0/24
 2049/udp                        | ALLOW IN    | 192.168.56.0/24
 111/tcp                         | ALLOW IN    | 192.168.56.0/24
@@ -512,14 +511,12 @@ sudo ufw enable
 22/tcp                          | ALLOW IN    | 192.168.56.0/24
 22/tcp                          | ALLOW IN    | 192.168.56.1
 51820/udp on enp0s8             | ALLOW IN    | 192.168.56.20
-22/tcp (v6) on enp0s8           | ALLOW IN    | Anywhere (v6)
 
 **To**                         | **Action**  | **From**
 -------------------------------|-------------|---------------------
 Anywhere                       | ALLOW OUT   | Anywhere on wg0
 192.168.56.10 51820/udp        | ALLOW OUT   | Anywhere on enp0s8
 192.168.56.20 51820/udp        | ALLOW OUT   | Anywhere on enp0s8*
-Anywhere (v6)                  | ALLOW OUT   | Anywhere (v6) on wg0
 
 
 ## 🔐 Basic SSH Hardening
