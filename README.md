@@ -14,6 +14,12 @@ The infrastructure includes:
 ---
 
 ## 📚 Table of Contents
+- [🧰 Initial VM Setup and Networking](#-initial-vm-setup-and-networking)
+- [🔌 WireGuard VPN Configuration](#-wireguard-vpn-configuration)
+- [🧱 NFS Server Setup](#-nfs-server-setup)
+- [🛡️ UFW Firewall Configuration](#-ufw-firewall-configuration)
+- [🔐 Basic SSH Hardening](#-basic-ssh-hardening)
+- [📜 Useful Scripts](#-useful-scripts)
 
 
 ## ⚙️ Scripts
